@@ -34,6 +34,7 @@ export function useEstoque() {
           empresas ( id, razao_social, nome_fantasia )
         `
         )
+        .is("deleted_at", null)
         .order("data_recebimento", { ascending: false });
 
       if (error) throw error;

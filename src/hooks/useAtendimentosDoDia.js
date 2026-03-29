@@ -66,6 +66,7 @@ export function useAtendimentosDoDia() {
         )
         .gte("data", inicioDia)
         .lte("data", fimDia)
+        .is("deleted_at", null)
         .order("cidade", { ascending: true });
 
       if (error) throw error;

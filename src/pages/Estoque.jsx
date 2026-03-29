@@ -9,6 +9,8 @@ import {
   Calendar,
   Box,
   Trash2,
+  Pencil,
+  X,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useEstoque } from "../hooks/useEstoque";
@@ -86,7 +88,7 @@ export default function Estoque() {
       {!carregando &&
         !erro &&
         itens.map((item) => (
-          <CardEstoque key={item.id} item={item} onExcluido={recarregar} />
+          <CardEstoque key={item.id} item={item} onAtualizado={recarregar} />
         ))}
 
       {!carregando && !erro && itens.length === 0 && (
@@ -99,8 +101,9 @@ export default function Estoque() {
 }
 
 /* ── Card de item do estoque ── */
-function CardEstoque({ item, onExcluido }) {
+function CardEstoque({ item, onAtualizado }) {
   const [excluindo, setExcluindo] = useState(false);
+  const [editando, setEditando] = useState(false);
 
   async function excluir() {
     if (!confirm("Excluir este registro de estoque?")) return;
@@ -108,15 +111,38 @@ function CardEstoque({ item, onExcluido }) {
     try {
       const { error } = await supabase
         .from("estoque")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", item.id);
       if (error) throw error;
-      onExcluido();
+      onAtualizado();
     } catch (err) {
       alert("Erro ao excluir: " + err.message);
     } finally {
       setExcluindo(false);
     }
+  }
+
+  /* Se está editando, mostra o formulário com os dados preenchidos */
+  if (editando) {
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setEditando(false)}
+          className="absolute top-3 right-3 z-10 p-1.5 text-text-disabled hover:text-red-500
+                     hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+          title="Cancelar edição"
+        >
+          <X size={18} />
+        </button>
+        <FormEstoque
+          item={item}
+          onSalvo={() => {
+            setEditando(false);
+            onAtualizado();
+          }}
+        />
+      </div>
+    );
   }
 
   const dataFormatada = item.data_recebimento
@@ -153,30 +179,42 @@ function CardEstoque({ item, onExcluido }) {
             </p>
           )}
         </div>
-        <button
-          onClick={excluir}
-          disabled={excluindo}
-          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg
-                     transition-colors cursor-pointer disabled:opacity-40 shrink-0"
-          title="Excluir"
-        >
-          <Trash2 size={18} />
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => setEditando(true)}
+            className="p-2 text-text-disabled hover:text-accent-500 hover:bg-accent-50 rounded-lg
+                       transition-colors cursor-pointer"
+            title="Editar"
+          >
+            <Pencil size={18} />
+          </button>
+          <button
+            onClick={excluir}
+            disabled={excluindo}
+            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg
+                       transition-colors cursor-pointer disabled:opacity-40"
+            title="Excluir"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-/* ── Formulário de nova entrada no estoque ── */
-function FormEstoque({ onSalvo }) {
+/* ── Formulário de estoque (criar + editar) ── */
+function FormEstoque({ item, onSalvo }) {
+  const modoEdicao = !!item;
   const { empresas, carregando: carregandoEmpresas } = useEmpresas();
 
   const [form, setForm] = useState({
-    empresa_id: "",
-    modelo_equipamento: "",
-    quantidade: "1",
-    data_recebimento: new Date().toISOString().slice(0, 10),
-    observacoes: "",
+    empresa_id: item?.empresa_id?.toString() || "",
+    modelo_equipamento: item?.modelo_equipamento || "",
+    quantidade: item?.quantidade?.toString() || "1",
+    data_recebimento:
+      item?.data_recebimento || new Date().toISOString().slice(0, 10),
+    observacoes: item?.observacoes || "",
   });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -206,23 +244,33 @@ function FormEstoque({ onSalvo }) {
 
     setSalvando(true);
     try {
-      const { error } = await supabase.from("estoque").insert({
+      const payload = {
         empresa_id: Number(form.empresa_id),
         modelo_equipamento: form.modelo_equipamento.trim(),
         quantidade: Number(form.quantidade),
         data_recebimento: form.data_recebimento,
         observacoes: form.observacoes.trim() || null,
-      });
-      if (error) throw error;
+      };
+
+      if (modoEdicao) {
+        const { error } = await supabase
+          .from("estoque")
+          .update(payload)
+          .eq("id", item.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("estoque").insert(payload);
+        if (error) throw error;
+        setForm({
+          empresa_id: "",
+          modelo_equipamento: "",
+          quantidade: "1",
+          data_recebimento: new Date().toISOString().slice(0, 10),
+          observacoes: "",
+        });
+      }
 
       setSucesso(true);
-      setForm({
-        empresa_id: "",
-        modelo_equipamento: "",
-        quantidade: "1",
-        data_recebimento: new Date().toISOString().slice(0, 10),
-        observacoes: "",
-      });
       if (onSalvo) onSalvo();
     } catch (err) {
       setErro(err.message);
@@ -241,7 +289,8 @@ function FormEstoque({ onSalvo }) {
     >
       {sucesso && (
         <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-lg px-3 py-2 text-sm font-semibold">
-          <CheckCircle2 size={18} /> Entrada registrada!
+          <CheckCircle2 size={18} />{" "}
+          {modoEdicao ? "Entrada atualizada!" : "Entrada registrada!"}
         </div>
       )}
       {erro && (
@@ -317,7 +366,8 @@ function FormEstoque({ onSalvo }) {
           </>
         ) : (
           <>
-            <Save size={24} /> Registrar Entrada
+            <Save size={24} />{" "}
+            {modoEdicao ? "Salvar Alterações" : "Registrar Entrada"}
           </>
         )}
       </button>

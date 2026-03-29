@@ -12,6 +12,8 @@ import {
   MapPin,
   ChevronDown,
   ChevronUp,
+  Pencil,
+  X,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useEmpresas } from "../hooks/useEmpresas";
@@ -60,7 +62,7 @@ export default function Empresas() {
       {!carregando &&
         !erro &&
         empresas.map((emp) => (
-          <CardEmpresa key={emp.id} empresa={emp} onExcluido={recarregar} />
+          <CardEmpresa key={emp.id} empresa={emp} onAtualizado={recarregar} />
         ))}
 
       {!carregando && !erro && empresas.length === 0 && (
@@ -73,9 +75,10 @@ export default function Empresas() {
 }
 
 /* ── Card de empresa ── */
-function CardEmpresa({ empresa, onExcluido }) {
+function CardEmpresa({ empresa, onAtualizado }) {
   const [excluindo, setExcluindo] = useState(false);
   const [expandido, setExpandido] = useState(false);
+  const [editando, setEditando] = useState(false);
 
   const nome = empresa.nome_fantasia || empresa.razao_social;
 
@@ -85,15 +88,38 @@ function CardEmpresa({ empresa, onExcluido }) {
     try {
       const { error } = await supabase
         .from("empresas")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", empresa.id);
       if (error) throw error;
-      onExcluido();
+      onAtualizado();
     } catch (err) {
       alert("Erro ao excluir: " + err.message);
     } finally {
       setExcluindo(false);
     }
+  }
+
+  /* Se está editando, mostra o formulário com os dados preenchidos */
+  if (editando) {
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setEditando(false)}
+          className="absolute top-3 right-3 z-10 p-1.5 text-text-disabled hover:text-red-500
+                     hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+          title="Cancelar edição"
+        >
+          <X size={18} />
+        </button>
+        <FormEmpresa
+          empresa={empresa}
+          onSalvo={() => {
+            setEditando(false);
+            onAtualizado();
+          }}
+        />
+      </div>
+    );
   }
 
   /* Montar endereço resumido */
@@ -129,6 +155,17 @@ function CardEmpresa({ empresa, onExcluido }) {
               title={expandido ? "Recolher" : "Ver detalhes"}
             >
               {expandido ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+            <button
+              onClick={() => {
+                setEditando(true);
+                setExpandido(false);
+              }}
+              className="p-2 text-text-disabled hover:text-accent-500 hover:bg-accent-50 rounded-lg
+                         transition-colors cursor-pointer"
+              title="Editar"
+            >
+              <Pencil size={18} />
             </button>
             <button
               onClick={excluir}
@@ -220,24 +257,26 @@ function InfoLinha({ label, valor }) {
   );
 }
 
-/* ── Formulário de nova empresa ── */
-function FormEmpresa({ onSalvo }) {
+/* ── Formulário de empresa (criar + editar) ── */
+function FormEmpresa({ empresa, onSalvo }) {
+  const modoEdicao = !!empresa;
+
   const [form, setForm] = useState({
-    razao_social: "",
-    nome_fantasia: "",
-    cnpj: "",
-    inscricao_municipal: "",
-    inscricao_estadual: "",
-    logradouro: "",
-    numero: "",
-    complemento: "",
-    bairro: "",
-    cidade: "",
-    uf: "",
-    cep: "",
-    email: "",
-    telefone: "",
-    observacoes: "",
+    razao_social: empresa?.razao_social || "",
+    nome_fantasia: empresa?.nome_fantasia || "",
+    cnpj: empresa?.cnpj || "",
+    inscricao_municipal: empresa?.inscricao_municipal || "",
+    inscricao_estadual: empresa?.inscricao_estadual || "",
+    logradouro: empresa?.logradouro || "",
+    numero: empresa?.numero || "",
+    complemento: empresa?.complemento || "",
+    bairro: empresa?.bairro || "",
+    cidade: empresa?.cidade || "",
+    uf: empresa?.uf || "",
+    cep: empresa?.cep || "",
+    email: empresa?.email || "",
+    telefone: empresa?.telefone || "",
+    observacoes: empresa?.observacoes || "",
   });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -268,27 +307,35 @@ function FormEmpresa({ onSalvo }) {
       // Razão social é obrigatório
       payload.razao_social = form.razao_social.trim();
 
-      const { error } = await supabase.from("empresas").insert(payload);
-      if (error) throw error;
-
-      setSucesso(true);
-      setForm({
-        razao_social: "",
-        nome_fantasia: "",
-        cnpj: "",
-        inscricao_municipal: "",
-        inscricao_estadual: "",
-        logradouro: "",
-        numero: "",
-        complemento: "",
-        bairro: "",
-        cidade: "",
-        uf: "",
-        cep: "",
-        email: "",
-        telefone: "",
-        observacoes: "",
-      });
+      if (modoEdicao) {
+        const { error } = await supabase
+          .from("empresas")
+          .update(payload)
+          .eq("id", empresa.id);
+        if (error) throw error;
+        setSucesso(true);
+      } else {
+        const { error } = await supabase.from("empresas").insert(payload);
+        if (error) throw error;
+        setSucesso(true);
+        setForm({
+          razao_social: "",
+          nome_fantasia: "",
+          cnpj: "",
+          inscricao_municipal: "",
+          inscricao_estadual: "",
+          logradouro: "",
+          numero: "",
+          complemento: "",
+          bairro: "",
+          cidade: "",
+          uf: "",
+          cep: "",
+          email: "",
+          telefone: "",
+          observacoes: "",
+        });
+      }
       if (onSalvo) onSalvo();
     } catch (err) {
       setErro(err.message);
@@ -307,7 +354,8 @@ function FormEmpresa({ onSalvo }) {
     >
       {sucesso && (
         <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-lg px-3 py-2 text-sm font-semibold">
-          <CheckCircle2 size={18} /> Empresa cadastrada!
+          <CheckCircle2 size={18} />{" "}
+          {modoEdicao ? "Empresa atualizada!" : "Empresa cadastrada!"}
         </div>
       )}
       {erro && (
@@ -462,7 +510,8 @@ function FormEmpresa({ onSalvo }) {
           </>
         ) : (
           <>
-            <Save size={24} /> Salvar Empresa
+            <Save size={24} />{" "}
+            {modoEdicao ? "Salvar Alterações" : "Salvar Empresa"}
           </>
         )}
       </button>

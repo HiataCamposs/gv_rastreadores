@@ -77,11 +77,16 @@ export default function Dashboard({
              atendimento_veiculos ( id )`
           )
           .gte("data", trintaDiasAtras.toISOString())
+          .is("deleted_at", null)
           .order("data", { ascending: false }),
         supabase
           .from("empresas")
-          .select("id, razao_social, nome_fantasia, ativo"),
-        supabase.from("estoque").select("id, quantidade, empresa_id"),
+          .select("id, razao_social, nome_fantasia, ativo")
+          .is("deleted_at", null),
+        supabase
+          .from("estoque")
+          .select("id, quantidade, empresa_id")
+          .is("deleted_at", null),
       ]);
 
       if (resAtend.error) throw resAtend.error;

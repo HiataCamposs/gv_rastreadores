@@ -31,6 +31,7 @@ export function useEmpresas() {
         `
         )
         .eq("ativo", true)
+        .is("deleted_at", null)
         .order("razao_social", { ascending: true });
 
       if (error) throw error;
