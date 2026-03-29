@@ -1,0 +1,471 @@
+import { useState } from "react";
+import {
+  PlusCircle,
+  Save,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Phone,
+  Mail,
+  FileText,
+  Trash2,
+  MapPin,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { supabase } from "../lib/supabaseClient";
+import { useEmpresas } from "../hooks/useEmpresas";
+
+export default function Empresas() {
+  const { empresas, carregando, erro, recarregar } = useEmpresas();
+  const [mostrarForm, setMostrarForm] = useState(false);
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      {/* Botão adicionar */}
+      <button
+        onClick={() => setMostrarForm(!mostrarForm)}
+        className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold
+                     text-primary-600 bg-primary-50 border-2 border-dashed border-primary-200 rounded-xl
+                     hover:bg-primary-100 active:bg-primary-200 transition-colors cursor-pointer"
+      >
+        <PlusCircle size={18} />
+        {mostrarForm ? "Cancelar" : "Cadastrar Nova Empresa"}
+      </button>
+
+      {/* Formulário inline */}
+      {mostrarForm && (
+        <FormEmpresa
+          onSalvo={() => {
+            setMostrarForm(false);
+            recarregar();
+          }}
+        />
+      )}
+
+      {/* Loading */}
+      {carregando && (
+        <p className="text-center text-text-disabled py-10">Carregando…</p>
+      )}
+
+      {/* Erro */}
+      {!carregando && erro && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3">
+          <AlertCircle size={22} className="shrink-0" />
+          <p className="font-semibold">{erro}</p>
+        </div>
+      )}
+
+      {/* Lista */}
+      {!carregando &&
+        !erro &&
+        empresas.map((emp) => (
+          <CardEmpresa key={emp.id} empresa={emp} onExcluido={recarregar} />
+        ))}
+
+      {!carregando && !erro && empresas.length === 0 && (
+        <p className="text-center text-text-disabled py-10">
+          Nenhuma empresa cadastrada ainda.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ── Card de empresa ── */
+function CardEmpresa({ empresa, onExcluido }) {
+  const [excluindo, setExcluindo] = useState(false);
+  const [expandido, setExpandido] = useState(false);
+
+  const nome = empresa.nome_fantasia || empresa.razao_social;
+
+  async function excluir() {
+    if (!confirm(`Excluir "${nome}"?`)) return;
+    setExcluindo(true);
+    try {
+      const { error } = await supabase
+        .from("empresas")
+        .delete()
+        .eq("id", empresa.id);
+      if (error) throw error;
+      onExcluido();
+    } catch (err) {
+      alert("Erro ao excluir: " + err.message);
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
+  /* Montar endereço resumido */
+  const partes = [empresa.logradouro, empresa.numero, empresa.bairro].filter(
+    Boolean
+  );
+  const enderecoLinha1 = partes.join(", ");
+  const enderecoLinha2 = [empresa.cidade, empresa.uf]
+    .filter(Boolean)
+    .join(" - ");
+  const cepFormatado = empresa.cep || "";
+
+  return (
+    <div className="bg-surface rounded-xl border border-border-custom shadow-sm overflow-hidden">
+      {/* Cabeçalho do card — sempre visível */}
+      <div className="p-4 space-y-2">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-bold text-text-primary truncate">
+              {nome}
+            </p>
+            {empresa.cnpj && (
+              <p className="text-sm text-text-secondary flex items-center gap-1 mt-0.5">
+                <FileText size={14} className="shrink-0" /> {empresa.cnpj}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0 ml-2">
+            <button
+              onClick={() => setExpandido(!expandido)}
+              className="p-2 text-text-disabled hover:text-primary-500 hover:bg-primary-50 rounded-lg
+                         transition-colors cursor-pointer"
+              title={expandido ? "Recolher" : "Ver detalhes"}
+            >
+              {expandido ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+            <button
+              onClick={excluir}
+              disabled={excluindo}
+              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg
+                         transition-colors cursor-pointer disabled:opacity-40"
+              title="Excluir"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
+          {empresa.telefone && (
+            <a
+              href={`tel:${empresa.telefone.replace(/\D/g, "")}`}
+              className="flex items-center gap-1 hover:text-green-600"
+            >
+              <Phone size={14} /> {empresa.telefone}
+            </a>
+          )}
+          {empresa.email && (
+            <span className="flex items-center gap-1">
+              <Mail size={14} /> {empresa.email}
+            </span>
+          )}
+          {empresa.cidade && (
+            <span className="flex items-center gap-1">
+              <MapPin size={14} /> {empresa.cidade}
+              {empresa.uf ? ` - ${empresa.uf}` : ""}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Detalhes expandidos — dados completos para NF */}
+      {expandido && (
+        <div className="border-t border-border-custom bg-surface-alt px-4 py-3 space-y-2 text-sm">
+          {empresa.razao_social && empresa.nome_fantasia && (
+            <InfoLinha label="Razão Social" valor={empresa.razao_social} />
+          )}
+          {empresa.inscricao_municipal && (
+            <InfoLinha
+              label="Inscrição Municipal"
+              valor={empresa.inscricao_municipal}
+            />
+          )}
+          {empresa.inscricao_estadual && (
+            <InfoLinha
+              label="Inscrição Estadual"
+              valor={empresa.inscricao_estadual}
+            />
+          )}
+          {enderecoLinha1 && (
+            <InfoLinha
+              label="Endereço"
+              valor={`${enderecoLinha1}${
+                empresa.complemento ? " - " + empresa.complemento : ""
+              }`}
+            />
+          )}
+          {enderecoLinha2 && (
+            <InfoLinha
+              label="Cidade/UF"
+              valor={`${enderecoLinha2}${
+                cepFormatado ? " — CEP " + cepFormatado : ""
+              }`}
+            />
+          )}
+          {empresa.observacoes && (
+            <InfoLinha label="Obs" valor={empresa.observacoes} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Mini-componente de linha de detalhe */
+function InfoLinha({ label, valor }) {
+  return (
+    <div className="flex gap-2">
+      <span className="text-text-disabled font-medium shrink-0 w-28">
+        {label}:
+      </span>
+      <span className="text-text-primary">{valor}</span>
+    </div>
+  );
+}
+
+/* ── Formulário de nova empresa ── */
+function FormEmpresa({ onSalvo }) {
+  const [form, setForm] = useState({
+    razao_social: "",
+    nome_fantasia: "",
+    cnpj: "",
+    inscricao_municipal: "",
+    inscricao_estadual: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    uf: "",
+    cep: "",
+    email: "",
+    telefone: "",
+    observacoes: "",
+  });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState(null);
+  const [sucesso, setSucesso] = useState(false);
+
+  function atualizar(campo, valor) {
+    setForm((p) => ({ ...p, [campo]: valor }));
+  }
+
+  async function salvar(e) {
+    e.preventDefault();
+    setSucesso(false);
+    setErro(null);
+
+    if (!form.razao_social.trim()) {
+      setErro("Informe a Razão Social da empresa.");
+      return;
+    }
+
+    setSalvando(true);
+    try {
+      const payload = {};
+      // Monta payload só com campos preenchidos
+      Object.entries(form).forEach(([key, val]) => {
+        const trimmed = typeof val === "string" ? val.trim() : val;
+        payload[key] = trimmed || null;
+      });
+      // Razão social é obrigatório
+      payload.razao_social = form.razao_social.trim();
+
+      const { error } = await supabase.from("empresas").insert(payload);
+      if (error) throw error;
+
+      setSucesso(true);
+      setForm({
+        razao_social: "",
+        nome_fantasia: "",
+        cnpj: "",
+        inscricao_municipal: "",
+        inscricao_estadual: "",
+        logradouro: "",
+        numero: "",
+        complemento: "",
+        bairro: "",
+        cidade: "",
+        uf: "",
+        cep: "",
+        email: "",
+        telefone: "",
+        observacoes: "",
+      });
+      if (onSalvo) onSalvo();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  const inputClass =
+    "w-full px-4 py-3 text-base bg-surface border-2 border-border-custom rounded-xl focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors placeholder:text-text-disabled";
+
+  return (
+    <form
+      onSubmit={salvar}
+      className="bg-surface rounded-xl border border-border-custom shadow-sm p-4 space-y-3"
+    >
+      {sucesso && (
+        <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-lg px-3 py-2 text-sm font-semibold">
+          <CheckCircle2 size={18} /> Empresa cadastrada!
+        </div>
+      )}
+      {erro && (
+        <div className="flex items-center gap-2 text-red-700 bg-red-50 rounded-lg px-3 py-2 text-sm font-semibold">
+          <AlertCircle size={18} /> {erro}
+        </div>
+      )}
+
+      {/* ── Dados da empresa ── */}
+      <p className="text-xs font-bold text-text-disabled uppercase tracking-wider pt-1">
+        Dados da Empresa
+      </p>
+      <input
+        type="text"
+        placeholder="Razão Social *"
+        value={form.razao_social}
+        onChange={(e) => atualizar("razao_social", e.target.value)}
+        className={inputClass}
+      />
+      <input
+        type="text"
+        placeholder="Nome Fantasia"
+        value={form.nome_fantasia}
+        onChange={(e) => atualizar("nome_fantasia", e.target.value)}
+        className={inputClass}
+      />
+      <input
+        type="text"
+        placeholder="CNPJ"
+        value={form.cnpj}
+        onChange={(e) => atualizar("cnpj", e.target.value)}
+        className={inputClass}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <input
+          type="text"
+          placeholder="Inscrição Municipal"
+          value={form.inscricao_municipal}
+          onChange={(e) => atualizar("inscricao_municipal", e.target.value)}
+          className={inputClass}
+        />
+        <input
+          type="text"
+          placeholder="Inscrição Estadual"
+          value={form.inscricao_estadual}
+          onChange={(e) => atualizar("inscricao_estadual", e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
+      {/* ── Endereço ── */}
+      <p className="text-xs font-bold text-text-disabled uppercase tracking-wider pt-2">
+        Endereço
+      </p>
+      <div className="grid grid-cols-3 gap-3">
+        <input
+          type="text"
+          placeholder="Logradouro"
+          value={form.logradouro}
+          onChange={(e) => atualizar("logradouro", e.target.value)}
+          className={inputClass + " col-span-2"}
+        />
+        <input
+          type="text"
+          placeholder="Nº"
+          value={form.numero}
+          onChange={(e) => atualizar("numero", e.target.value)}
+          className={inputClass}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <input
+          type="text"
+          placeholder="Complemento"
+          value={form.complemento}
+          onChange={(e) => atualizar("complemento", e.target.value)}
+          className={inputClass}
+        />
+        <input
+          type="text"
+          placeholder="Bairro"
+          value={form.bairro}
+          onChange={(e) => atualizar("bairro", e.target.value)}
+          className={inputClass}
+        />
+      </div>
+      <div className="grid grid-cols-5 gap-3">
+        <input
+          type="text"
+          placeholder="Cidade"
+          value={form.cidade}
+          onChange={(e) => atualizar("cidade", e.target.value)}
+          className={inputClass + " col-span-2"}
+        />
+        <input
+          type="text"
+          placeholder="UF"
+          maxLength={2}
+          value={form.uf}
+          onChange={(e) => atualizar("uf", e.target.value.toUpperCase())}
+          className={inputClass + " text-center"}
+        />
+        <input
+          type="text"
+          placeholder="CEP"
+          value={form.cep}
+          onChange={(e) => atualizar("cep", e.target.value)}
+          className={inputClass + " col-span-2"}
+        />
+      </div>
+
+      {/* ── Contato ── */}
+      <p className="text-xs font-bold text-text-disabled uppercase tracking-wider pt-2">
+        Contato
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <input
+          type="tel"
+          placeholder="Telefone"
+          value={form.telefone}
+          onChange={(e) => atualizar("telefone", e.target.value)}
+          className={inputClass}
+        />
+        <input
+          type="email"
+          placeholder="E-mail (envio de NFS-e)"
+          value={form.email}
+          onChange={(e) => atualizar("email", e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
+      <textarea
+        rows={2}
+        placeholder="Observações (opcional)"
+        value={form.observacoes}
+        onChange={(e) => atualizar("observacoes", e.target.value)}
+        className={inputClass + " resize-none"}
+      />
+
+      <button
+        type="submit"
+        disabled={salvando}
+        className="flex items-center justify-center gap-3 w-full py-4 text-lg font-bold
+                   text-white bg-primary-500 hover:bg-primary-600 active:bg-primary-700
+                   rounded-xl shadow-lg transition-colors disabled:opacity-60
+                   disabled:cursor-not-allowed cursor-pointer"
+      >
+        {salvando ? (
+          <>
+            <Loader2 size={24} className="animate-spin" /> Salvando…
+          </>
+        ) : (
+          <>
+            <Save size={24} /> Salvar Empresa
+          </>
+        )}
+      </button>
+    </form>
+  );
+}
