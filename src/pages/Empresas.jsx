@@ -23,15 +23,15 @@ export default function Empresas() {
   const [mostrarForm, setMostrarForm] = useState(false);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+    <div className="max-w-2xl mx-auto px-2.5 py-3 space-y-2.5">
       {/* Botão adicionar */}
       <button
         onClick={() => setMostrarForm(!mostrarForm)}
-        className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold
+        className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold
                      text-primary-600 bg-primary-50 border-2 border-dashed border-primary-200 rounded-xl
                      hover:bg-primary-100 active:bg-primary-200 transition-colors cursor-pointer"
       >
-        <PlusCircle size={18} />
+        <PlusCircle size={16} />
         {mostrarForm ? "Cancelar" : "Cadastrar Nova Empresa"}
       </button>
 
@@ -52,9 +52,9 @@ export default function Empresas() {
 
       {/* Erro */}
       {!carregando && erro && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3">
-          <AlertCircle size={22} className="shrink-0" />
-          <p className="font-semibold">{erro}</p>
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2">
+          <AlertCircle size={18} className="shrink-0" />
+          <p className="text-xs font-semibold">{erro}</p>
         </div>
       )}
 
@@ -124,7 +124,7 @@ function CardEmpresa({ empresa, onAtualizado }) {
 
   /* Montar endereço resumido */
   const partes = [empresa.logradouro, empresa.numero, empresa.bairro].filter(
-    Boolean
+    Boolean,
   );
   const enderecoLinha1 = partes.join(", ");
   const enderecoLinha2 = [empresa.cidade, empresa.uf]
@@ -135,15 +135,15 @@ function CardEmpresa({ empresa, onAtualizado }) {
   return (
     <div className="bg-surface rounded-xl border border-border-custom shadow-sm overflow-hidden">
       {/* Cabeçalho do card — sempre visível */}
-      <div className="p-4 space-y-2">
+      <div className="p-3 space-y-1.5">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <p className="text-base font-bold text-text-primary truncate">
+            <p className="text-sm font-bold text-text-primary truncate">
               {nome}
             </p>
             {empresa.cnpj && (
-              <p className="text-sm text-text-secondary flex items-center gap-1 mt-0.5">
-                <FileText size={14} className="shrink-0" /> {empresa.cnpj}
+              <p className="text-xs text-text-secondary flex items-center gap-1 mt-0.5">
+                <FileText size={12} className="shrink-0" /> {empresa.cnpj}
               </p>
             )}
           </div>
@@ -179,23 +179,23 @@ function CardEmpresa({ empresa, onAtualizado }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-secondary">
           {empresa.telefone && (
             <a
               href={`tel:${empresa.telefone.replace(/\D/g, "")}`}
               className="flex items-center gap-1 hover:text-green-600"
             >
-              <Phone size={14} /> {empresa.telefone}
+              <Phone size={12} /> {empresa.telefone}
             </a>
           )}
           {empresa.email && (
             <span className="flex items-center gap-1">
-              <Mail size={14} /> {empresa.email}
+              <Mail size={12} /> {empresa.email}
             </span>
           )}
           {empresa.cidade && (
             <span className="flex items-center gap-1">
-              <MapPin size={14} /> {empresa.cidade}
+              <MapPin size={12} /> {empresa.cidade}
               {empresa.uf ? ` - ${empresa.uf}` : ""}
             </span>
           )}
@@ -204,7 +204,7 @@ function CardEmpresa({ empresa, onAtualizado }) {
 
       {/* Detalhes expandidos — dados completos para NF */}
       {expandido && (
-        <div className="border-t border-border-custom bg-surface-alt px-4 py-3 space-y-2 text-sm">
+        <div className="border-t border-border-custom bg-surface-alt px-3 py-2.5 space-y-1.5 text-xs">
           {empresa.razao_social && empresa.nome_fantasia && (
             <InfoLinha label="Razão Social" valor={empresa.razao_social} />
           )}
@@ -345,12 +345,12 @@ function FormEmpresa({ empresa, onSalvo }) {
   }
 
   const inputClass =
-    "w-full px-4 py-3 text-base bg-surface border-2 border-border-custom rounded-xl focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors placeholder:text-text-disabled";
+    "w-full px-3 py-2.5 text-sm bg-surface border-2 border-border-custom rounded-xl focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors placeholder:text-text-disabled";
 
   return (
     <form
       onSubmit={salvar}
-      className="bg-surface rounded-xl border border-border-custom shadow-sm p-4 space-y-3"
+      className="bg-surface rounded-xl border border-border-custom shadow-sm p-3 space-y-2.5"
     >
       {sucesso && (
         <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-lg px-3 py-2 text-sm font-semibold">
@@ -389,7 +389,7 @@ function FormEmpresa({ empresa, onSalvo }) {
         onChange={(e) => atualizar("cnpj", e.target.value)}
         className={inputClass}
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <input
           type="text"
           placeholder="Inscrição Municipal"
@@ -410,7 +410,7 @@ function FormEmpresa({ empresa, onSalvo }) {
       <p className="text-xs font-bold text-text-disabled uppercase tracking-wider pt-2">
         Endereço
       </p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <input
           type="text"
           placeholder="Logradouro"
@@ -426,7 +426,7 @@ function FormEmpresa({ empresa, onSalvo }) {
           className={inputClass}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <input
           type="text"
           placeholder="Complemento"
@@ -442,7 +442,7 @@ function FormEmpresa({ empresa, onSalvo }) {
           className={inputClass}
         />
       </div>
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-5 gap-2">
         <input
           type="text"
           placeholder="Cidade"
@@ -471,7 +471,7 @@ function FormEmpresa({ empresa, onSalvo }) {
       <p className="text-xs font-bold text-text-disabled uppercase tracking-wider pt-2">
         Contato
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <input
           type="tel"
           placeholder="Telefone"
@@ -499,18 +499,18 @@ function FormEmpresa({ empresa, onSalvo }) {
       <button
         type="submit"
         disabled={salvando}
-        className="flex items-center justify-center gap-3 w-full py-4 text-lg font-bold
+        className="flex items-center justify-center gap-2 w-full py-3 text-sm font-bold
                    text-white bg-primary-500 hover:bg-primary-600 active:bg-primary-700
                    rounded-xl shadow-lg transition-colors disabled:opacity-60
                    disabled:cursor-not-allowed cursor-pointer"
       >
         {salvando ? (
           <>
-            <Loader2 size={24} className="animate-spin" /> Salvando…
+            <Loader2 size={20} className="animate-spin" /> Salvando…
           </>
         ) : (
           <>
-            <Save size={24} />{" "}
+            <Save size={20} />{" "}
             {modoEdicao ? "Salvar Alterações" : "Salvar Empresa"}
           </>
         )}

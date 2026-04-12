@@ -32,17 +32,17 @@ export default function Estoque() {
   });
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+    <div className="max-w-2xl mx-auto px-2.5 py-3 space-y-2.5">
       {/* Resumo rápido */}
       {Object.keys(resumo).length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
           {Object.entries(resumo).map(([empresa, qtd]) => (
             <div
               key={empresa}
-              className="bg-surface rounded-xl border border-border-custom p-3 text-center"
+              className="bg-surface rounded-xl border border-border-custom p-2.5 text-center"
             >
-              <p className="text-2xl font-bold text-primary-500">{qtd}</p>
-              <p className="text-xs text-text-secondary leading-tight mt-1 truncate">
+              <p className="text-lg font-bold text-primary-500">{qtd}</p>
+              <p className="text-[10px] text-text-secondary leading-tight mt-0.5 truncate">
                 {empresa}
               </p>
             </div>
@@ -53,11 +53,11 @@ export default function Estoque() {
       {/* Botão adicionar */}
       <button
         onClick={() => setMostrarForm(!mostrarForm)}
-        className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold
+        className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold
                      text-primary-600 bg-primary-50 border-2 border-dashed border-primary-200 rounded-xl
                      hover:bg-primary-100 active:bg-primary-200 transition-colors cursor-pointer"
       >
-        <PlusCircle size={18} />
+        <PlusCircle size={16} />
         {mostrarForm ? "Cancelar" : "Registrar Entrada"}
       </button>
 
@@ -78,9 +78,9 @@ export default function Estoque() {
 
       {/* Erro */}
       {!carregando && erro && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3">
-          <AlertCircle size={22} className="shrink-0" />
-          <p className="font-semibold">{erro}</p>
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2">
+          <AlertCircle size={18} className="shrink-0" />
+          <p className="text-xs font-semibold">{erro}</p>
         </div>
       )}
 
@@ -150,31 +150,31 @@ function CardEstoque({ item, onAtualizado }) {
     : "—";
 
   return (
-    <div className="bg-surface rounded-xl border border-border-custom shadow-sm p-4">
+    <div className="bg-surface rounded-xl border border-border-custom shadow-sm p-3">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Box size={18} className="text-primary-500" />
-            <span className="font-bold text-text-primary">
+          <div className="flex items-center gap-1.5">
+            <Box size={16} className="text-primary-500" />
+            <span className="text-sm font-bold text-text-primary">
               {item.modelo_equipamento}
             </span>
             <span className="bg-primary-50 text-primary-700 text-xs font-bold px-2 py-0.5 rounded-full">
               ×{item.quantidade}
             </span>
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-secondary">
             <span className="flex items-center gap-1">
-              <Building2 size={14} />{" "}
+              <Building2 size={12} />{" "}
               {item.empresas?.nome_fantasia ||
                 item.empresas?.razao_social ||
                 "—"}
             </span>
             <span className="flex items-center gap-1">
-              <Calendar size={14} /> {dataFormatada}
+              <Calendar size={12} /> {dataFormatada}
             </span>
           </div>
           {item.observacoes && (
-            <p className="text-sm text-text-disabled italic">
+            <p className="text-xs text-text-disabled italic">
               {item.observacoes}
             </p>
           )}
@@ -280,12 +280,12 @@ function FormEstoque({ item, onSalvo }) {
   }
 
   const inputClass =
-    "w-full px-4 py-3 text-base bg-surface border-2 border-border-custom rounded-xl focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors placeholder:text-text-disabled";
+    "w-full px-3 py-2.5 text-sm bg-surface border-2 border-border-custom rounded-xl focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors placeholder:text-text-disabled";
 
   return (
     <form
       onSubmit={salvar}
-      className="bg-surface rounded-xl border border-border-custom shadow-sm p-4 space-y-3"
+      className="bg-surface rounded-xl border border-border-custom shadow-sm p-3 space-y-2.5"
     >
       {sucesso && (
         <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-lg px-3 py-2 text-sm font-semibold">
@@ -317,7 +317,7 @@ function FormEstoque({ item, onSalvo }) {
       </select>
 
       {/* Modelo + Quantidade */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <input
           type="text"
           placeholder="Modelo equip. *"
@@ -355,18 +355,18 @@ function FormEstoque({ item, onSalvo }) {
       <button
         type="submit"
         disabled={salvando}
-        className="flex items-center justify-center gap-3 w-full py-4 text-lg font-bold
+        className="flex items-center justify-center gap-2 w-full py-3 text-sm font-bold
                    text-white bg-primary-500 hover:bg-primary-600 active:bg-primary-700
                    rounded-xl shadow-lg transition-colors disabled:opacity-60
                    disabled:cursor-not-allowed cursor-pointer"
       >
         {salvando ? (
           <>
-            <Loader2 size={24} className="animate-spin" /> Salvando…
+            <Loader2 size={20} className="animate-spin" /> Salvando…
           </>
         ) : (
           <>
-            <Save size={24} />{" "}
+            <Save size={20} />{" "}
             {modoEdicao ? "Salvar Alterações" : "Registrar Entrada"}
           </>
         )}

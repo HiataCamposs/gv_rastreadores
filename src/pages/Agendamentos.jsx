@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   PlusCircle,
   Loader2,
@@ -11,11 +12,11 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  CheckCircle2,
   Filter,
   X,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
-import FormNovoAgendamento from "../components/FormNovoAgendamento";
 
 const TIPO_LABELS = {
   instalacao: "Instalação",
@@ -29,6 +30,7 @@ const STATUS_LABELS = {
   em_andamento: "Em andamento",
   concluido: "Concluído",
   cancelado: "Cancelado",
+  finalizado: "Finalizado",
 };
 
 const STATUS_COR = {
@@ -36,17 +38,18 @@ const STATUS_COR = {
   em_andamento: "bg-blue-100 text-blue-700",
   concluido: "bg-green-100 text-green-700",
   cancelado: "bg-red-100 text-red-700",
+  finalizado: "bg-emerald-100 text-emerald-700",
 };
 
 export default function Agendamentos() {
+  const navigate = useNavigate();
   const [agendamentos, setAgendamentos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
-  const [mostrarForm, setMostrarForm] = useState(false);
-  const [editando, setEditando] = useState(null);
 
   /* ── Filtros ── */
-  const [filtroStatus, setFiltroStatus] = useState(null);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [filtroStatus, setFiltroStatus] = useState("pendente");
   const [filtroCidade, setFiltroCidade] = useState(null);
   const [filtroData, setFiltroData] = useState("");
 
@@ -66,7 +69,7 @@ export default function Agendamentos() {
           telefone, endereco, tipo_servico, status, observacoes, distancia_km,
           empresas ( id, razao_social, nome_fantasia ),
           atendimento_veiculos ( id, placa, modelo )
-        `
+        `,
         )
         .is("deleted_at", null)
         .order("data", { ascending: false });
@@ -80,16 +83,6 @@ export default function Agendamentos() {
     }
   }
 
-  function iniciarEdicao(ag) {
-    setEditando(ag);
-    setMostrarForm(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function cancelarEdicao() {
-    setEditando(null);
-  }
-
   async function excluir(id) {
     if (!confirm("Excluir este agendamento?")) return;
     const { error } = await supabase
@@ -99,9 +92,22 @@ export default function Agendamentos() {
     if (!error) buscar();
   }
 
-  /* ── Cidades únicas para filtro ── */
+  /* ── Cidades únicas para filtro (pendentes + finalizados últimos 7 dias) ── */
   const cidades = useMemo(() => {
-    const set = new Set(agendamentos.map((a) => a.cidade));
+    const seteDiasAtras = new Date();
+    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+
+    const set = new Set(
+      agendamentos
+        .filter((a) => {
+          if (a.status === "pendente" || a.status === "em_andamento")
+            return true;
+          if (a.status === "finalizado" && new Date(a.data) >= seteDiasAtras)
+            return true;
+          return false;
+        })
+        .map((a) => a.cidade),
+    );
     return [...set].sort();
   }, [agendamentos]);
 
@@ -134,161 +140,127 @@ export default function Agendamentos() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-      {/* ── Edição inline ── */}
-      {editando && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-primary-600">
-              ✏️ Editando agendamento #{editando.id}
-            </p>
-            <button
-              onClick={cancelarEdicao}
-              className="text-sm font-semibold text-text-secondary hover:text-red-500
-                         cursor-pointer transition-colors"
-            >
-              Cancelar
-            </button>
-          </div>
-          <FormNovoAgendamento
-            key={`edit-${editando.id}`}
-            agendamento={editando}
-            veiculosIniciais={editando.atendimento_veiculos}
-            onSalvo={() => {
-              setEditando(null);
-              buscar();
-            }}
-          />
-        </div>
-      )}
-
+    <div className="max-w-2xl mx-auto px-2.5 py-3 space-y-2.5">
       {/* ── Botão novo ── */}
-      {!editando && (
-        <button
-          onClick={() => setMostrarForm(!mostrarForm)}
-          className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold
-                     text-primary-600 bg-primary-50 border-2 border-dashed border-primary-200 rounded-xl
-                     hover:bg-primary-100 active:bg-primary-200 transition-colors cursor-pointer"
-        >
-          <PlusCircle size={18} />
-          {mostrarForm ? "Cancelar" : "Novo Agendamento"}
-        </button>
-      )}
+      <button
+        onClick={() => navigate("/novo")}
+        className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold
+                   text-primary-600 bg-primary-50 border-2 border-dashed border-primary-200 rounded-xl
+                   hover:bg-primary-100 active:bg-primary-200 transition-colors cursor-pointer"
+      >
+        <PlusCircle size={16} />
+        Novo Agendamento
+      </button>
 
-      {/* ── Form novo ── */}
-      {!editando && mostrarForm && (
-        <FormNovoAgendamento
-          onSalvo={() => {
-            setMostrarForm(false);
-            buscar();
-          }}
-        />
-      )}
-
-      {/* ── Filtros ── */}
+      {/* ── Filtros (sanfona) ── */}
       {!carregando && !erro && agendamentos.length > 0 && (
-        <div className="bg-surface border border-border-custom rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-sm font-bold text-text-secondary">
+        <div className="bg-surface border border-border-custom rounded-xl overflow-hidden">
+          {/* Cabeçalho clicável */}
+          <button
+            onClick={() => setFiltrosAbertos(!filtrosAbertos)}
+            className="w-full px-3 py-2.5 flex items-center justify-between cursor-pointer
+                       hover:bg-surface-alt transition-colors"
+          >
+            <span className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
               <Filter size={15} /> Filtros
-            </p>
-            {temFiltroAtivo && (
-              <button
-                onClick={limparFiltros}
-                className="flex items-center gap-1 text-xs font-semibold text-primary-500
-                           hover:text-primary-700 cursor-pointer transition-colors"
-              >
-                <X size={14} /> Limpar
-              </button>
-            )}
-          </div>
-
-          {/* Status */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { val: null, label: "Todos" },
-              { val: "pendente", label: "Pendente" },
-              { val: "em_andamento", label: "Em andamento" },
-              { val: "concluido", label: "Concluído" },
-              { val: "cancelado", label: "Cancelado" },
-            ].map(({ val, label }) => {
-              const ativo = filtroStatus === val;
-              return (
-                <button
-                  key={label}
-                  onClick={() => setFiltroStatus(val)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer
-                    ${
-                      ativo
-                        ? "bg-primary-500 text-white"
-                        : "bg-bg-custom text-text-secondary hover:bg-primary-50"
-                    }`}
+              {temFiltroAtivo && (
+                <span className="ml-1 w-2 h-2 rounded-full bg-primary-500 inline-block" />
+              )}
+            </span>
+            <div className="flex items-center gap-2">
+              {temFiltroAtivo && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    limparFiltros();
+                  }}
+                  className="flex items-center gap-1 text-xs font-semibold text-primary-500
+                             hover:text-primary-700 transition-colors"
                 >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+                  <X size={14} /> Limpar
+                </span>
+              )}
+              {filtrosAbertos ? (
+                <ChevronUp size={18} className="text-text-disabled" />
+              ) : (
+                <ChevronDown size={18} className="text-text-disabled" />
+              )}
+            </div>
+          </button>
 
-          {/* Cidade */}
-          {cidades.length > 1 && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setFiltroCidade(null)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer
-                  ${
-                    !filtroCidade
-                      ? "bg-accent-500 text-white"
-                      : "bg-bg-custom text-text-secondary hover:bg-accent-50"
-                  }`}
-              >
-                Todas cidades
-              </button>
-              {cidades.map((c) => {
-                const ativo = filtroCidade === c;
-                return (
-                  <button
-                    key={c}
-                    onClick={() => setFiltroCidade(c)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer
-                      ${
-                        ativo
-                          ? "bg-accent-500 text-white"
-                          : "bg-bg-custom text-text-secondary hover:bg-accent-50"
-                      }`}
-                  >
-                    {c}
-                  </button>
-                );
-              })}
+          {/* Conteúdo colapsável */}
+          {filtrosAbertos && (
+            <div className="px-3 pb-3 space-y-2.5 border-t border-border-custom pt-2.5">
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">
+                  Status:
+                </label>
+                <select
+                  value={filtroStatus || ""}
+                  onChange={(e) => setFiltroStatus(e.target.value || null)}
+                  className="w-full px-2.5 py-1.5 text-xs bg-bg-custom border border-border-custom rounded-lg
+                             focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors"
+                >
+                  <option value="">Todos</option>
+                  <option value="pendente">Pendente</option>
+                  <option value="finalizado">Finalizado</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
+              </div>
+
+              {/* Cidade */}
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">
+                  Cidade:
+                </label>
+                <select
+                  value={filtroCidade || ""}
+                  onChange={(e) => setFiltroCidade(e.target.value || null)}
+                  className="w-full px-2.5 py-1.5 text-xs bg-bg-custom border border-border-custom rounded-lg
+                             focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors"
+                >
+                  <option value="">Todas</option>
+                  {cidades.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Data */}
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">
+                  Data:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={filtroData}
+                    onChange={(e) => setFiltroData(e.target.value)}
+                    className="flex-1 px-2.5 py-1.5 text-xs bg-bg-custom border border-border-custom rounded-lg
+                               focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors"
+                  />
+                  {filtroData && (
+                    <button
+                      onClick={() => setFiltroData("")}
+                      className="p-2 rounded-lg text-text-secondary hover:bg-red-50 hover:text-red-500
+                                 cursor-pointer transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Contador */}
+              <p className="text-xs text-text-disabled text-right">
+                {filtrados.length} de {agendamentos.length} agendamento
+                {agendamentos.length !== 1 && "s"}
+              </p>
             </div>
           )}
-
-          {/* Data */}
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={filtroData}
-              onChange={(e) => setFiltroData(e.target.value)}
-              className="flex-1 px-3 py-2 text-sm bg-bg-custom border border-border-custom rounded-lg
-                         focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors"
-            />
-            {filtroData && (
-              <button
-                onClick={() => setFiltroData("")}
-                className="p-2 rounded-lg text-text-secondary hover:bg-red-50 hover:text-red-500
-                           cursor-pointer transition-colors"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-
-          {/* Contador */}
-          <p className="text-xs text-text-disabled text-right">
-            {filtrados.length} de {agendamentos.length} agendamento
-            {agendamentos.length !== 1 && "s"}
-          </p>
         </div>
       )}
 
@@ -302,9 +274,9 @@ export default function Agendamentos() {
 
       {/* ── Erro ── */}
       {!carregando && erro && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3">
-          <AlertCircle size={22} />
-          <p className="font-semibold">{erro}</p>
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2">
+          <AlertCircle size={18} />
+          <p className="text-xs font-semibold">{erro}</p>
         </div>
       )}
 
@@ -332,9 +304,9 @@ export default function Agendamentos() {
           <CardAgendamento
             key={ag.id}
             ag={ag}
-            onEditar={() => iniciarEdicao(ag)}
+            onEditar={() => navigate(`/editar/${ag.id}`)}
             onExcluir={() => excluir(ag.id)}
-            destaque={editando?.id === ag.id}
+            onFinalizar={() => navigate(`/finalizar/${ag.id}`)}
           />
         ))}
     </div>
@@ -342,7 +314,7 @@ export default function Agendamentos() {
 }
 
 /* ── Card resumido de agendamento ── */
-function CardAgendamento({ ag, onEditar, onExcluir, destaque }) {
+function CardAgendamento({ ag, onEditar, onExcluir, onFinalizar }) {
   const [aberto, setAberto] = useState(false);
 
   const dataFormatada = new Date(ag.data).toLocaleDateString("pt-BR", {
@@ -361,20 +333,14 @@ function CardAgendamento({ ag, onEditar, onExcluir, destaque }) {
   const statusCor = STATUS_COR[ag.status] || STATUS_COR.pendente;
 
   return (
-    <div
-      className={`bg-surface rounded-xl border shadow-sm overflow-hidden transition-colors ${
-        destaque
-          ? "border-primary-400 ring-2 ring-primary-100"
-          : "border-border-custom"
-      }`}
-    >
+    <div className="bg-surface rounded-xl border border-border-custom shadow-sm overflow-hidden">
       {/* Cabeçalho clicável */}
       <button
         onClick={() => setAberto(!aberto)}
-        className="w-full px-4 py-3 flex items-center justify-between cursor-pointer
+        className="w-full px-3 py-2.5 flex items-center justify-between cursor-pointer
                    hover:bg-surface-alt transition-colors"
       >
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="text-left min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-text-primary truncate">
@@ -411,8 +377,8 @@ function CardAgendamento({ ag, onEditar, onExcluir, destaque }) {
 
       {/* Detalhes expandidos */}
       {aberto && (
-        <div className="px-4 pb-4 space-y-3 border-t border-border-custom pt-3">
-          <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="px-3 pb-3 space-y-2.5 border-t border-border-custom pt-2.5">
+          <div className="grid grid-cols-2 gap-1.5 text-xs">
             <Info label="Empresa" valor={nomeEmpresa} />
             <Info
               label="Natureza"
@@ -459,7 +425,7 @@ function CardAgendamento({ ag, onEditar, onExcluir, destaque }) {
                 <p className="text-text-primary text-sm">{ag.endereco}</p>
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                    ag.endereco
+                    ag.endereco,
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -482,7 +448,7 @@ function CardAgendamento({ ag, onEditar, onExcluir, destaque }) {
                   <a
                     key={v.id}
                     href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(
-                      v.modelo
+                      v.modelo,
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -509,20 +475,28 @@ function CardAgendamento({ ag, onEditar, onExcluir, destaque }) {
           {/* Ações */}
           <div className="flex gap-2 pt-1">
             <button
+              onClick={onExcluir}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold
+                         text-red-500 bg-red-50 hover:bg-red-100 active:bg-red-200
+                         rounded-xl transition-colors cursor-pointer"
+            >
+              <Trash2 size={14} />
+            </button>
+            <button
               onClick={onEditar}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold
                          text-primary-600 bg-primary-50 hover:bg-primary-100 active:bg-primary-200
                          rounded-xl transition-colors cursor-pointer"
             >
               ✏️ Editar
             </button>
             <button
-              onClick={onExcluir}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold
-                         text-red-500 bg-red-50 hover:bg-red-100 active:bg-red-200
+              onClick={onFinalizar}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold
+                         text-green-700 bg-green-50 hover:bg-green-100 active:bg-green-200
                          rounded-xl transition-colors cursor-pointer"
             >
-              <Trash2 size={16} />
+              <CheckCircle2 size={14} /> Finalizar
             </button>
           </div>
         </div>

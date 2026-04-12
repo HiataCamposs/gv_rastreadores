@@ -65,7 +65,7 @@ export default function FormNovoAgendamento({
     const d = new Date(iso);
     const pad = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
-      d.getDate()
+      d.getDate(),
     )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
@@ -87,7 +87,7 @@ export default function FormNovoAgendamento({
   const [veiculos, setVeiculos] = useState(
     veiculosIniciais && veiculosIniciais.length > 0
       ? veiculosIniciais.map((v) => ({ placa: v.placa, modelo: v.modelo }))
-      : [{ ...VEICULO_VAZIO }]
+      : [{ ...VEICULO_VAZIO }],
   );
 
   /* ── Estado de feedback ── */
@@ -144,7 +144,7 @@ export default function FormNovoAgendamento({
     if (!form.telefone.trim()) return "Informe o telefone.";
     if (!form.cidade.trim()) return "Informe a cidade.";
     const veiculosValidos = veiculos.filter(
-      (v) => v.placa.trim() && v.modelo.trim()
+      (v) => v.placa.trim() && v.modelo.trim(),
     );
     if (veiculosValidos.length === 0)
       return "Adicione pelo menos um veículo com placa e modelo.";
@@ -255,18 +255,18 @@ export default function FormNovoAgendamento({
   }
 
   const inputClass =
-    "w-full px-4 py-3.5 text-base bg-surface border-2 border-border-custom rounded-xl focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors placeholder:text-text-disabled";
+    "w-full px-3 py-2.5 text-sm bg-surface border-2 border-border-custom rounded-xl focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none transition-colors placeholder:text-text-disabled";
 
   /* ═══════════════ RENDER ═══════════════ */
   return (
     <form
       onSubmit={salvar}
-      className="bg-surface rounded-xl border border-border-custom shadow-sm p-5 space-y-5"
+      className="bg-surface rounded-xl border border-border-custom shadow-sm p-3 space-y-3"
     >
       {/* ── Feedback: Sucesso ── */}
       {sucesso && (
-        <div className="flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3">
-          <CheckCircle2 size={22} className="shrink-0" />
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-3 py-2">
+          <CheckCircle2 size={18} className="shrink-0" />
           <p className="font-semibold">
             {modoEdicao
               ? "Agendamento atualizado com sucesso!"
@@ -277,8 +277,8 @@ export default function FormNovoAgendamento({
 
       {/* ── Feedback: Erro ── */}
       {erro && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3">
-          <AlertCircle size={22} className="shrink-0" />
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2">
+          <AlertCircle size={18} className="shrink-0" />
           <p className="font-semibold">{erro}</p>
         </div>
       )}
@@ -286,7 +286,7 @@ export default function FormNovoAgendamento({
       {/* ═══ 1. EMPRESA ═══ */}
       <div>
         <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
-          <Building2 size={16} /> Empresa
+          <Building2 size={14} /> Empresa
         </label>
         <select
           value={form.empresa_id}
@@ -308,7 +308,7 @@ export default function FormNovoAgendamento({
       {/* ═══ 2. NATUREZA (tipo de serviço) ═══ */}
       <div>
         <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
-          <Wrench size={16} /> Natureza
+          <Wrench size={14} /> Natureza
         </label>
         <select
           value={form.tipo_servico}
@@ -326,7 +326,7 @@ export default function FormNovoAgendamento({
       {/* ═══ 3. DATA E HORÁRIO ═══ */}
       <div>
         <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
-          <CalendarDays size={16} /> Data e Horário
+          <CalendarDays size={14} /> Data e Horário
         </label>
         <input
           type="datetime-local"
@@ -337,12 +337,12 @@ export default function FormNovoAgendamento({
       </div>
 
       {/* ═══ 4. RESPONSÁVEL (vínculo + telefone + nome) ═══ */}
-      <fieldset className="space-y-3">
+      <fieldset className="space-y-2">
         <legend className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
-          <User size={16} /> Responsável
+          <User size={14} /> Responsável
         </legend>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <select
             value={form.tipo_responsavel}
             onChange={(e) => atualizarCampo("tipo_responsavel", e.target.value)}
@@ -373,12 +373,12 @@ export default function FormNovoAgendamento({
       </fieldset>
 
       {/* ═══ 6. ENDEREÇO (cidade, bairro, rua, número) ═══ */}
-      <fieldset className="space-y-3">
+      <fieldset className="space-y-2">
         <legend className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
-          <MapPin size={16} /> Endereço
+          <MapPin size={14} /> Endereço
         </legend>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <input
             type="text"
             placeholder="Cidade"
@@ -395,7 +395,7 @@ export default function FormNovoAgendamento({
           />
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <input
             type="text"
             placeholder="Rua / Avenida"
@@ -414,15 +414,15 @@ export default function FormNovoAgendamento({
       </fieldset>
 
       {/* ═══ 8. VEÍCULOS (dinâmico) ═══ */}
-      <fieldset className="space-y-3">
+      <fieldset className="space-y-2">
         <legend className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
-          <Car size={16} /> Veículos
+          <Car size={14} /> Veículos
         </legend>
 
         {veiculos.map((veiculo, index) => (
           <div
             key={index}
-            className="flex gap-2 items-start bg-surface-alt border border-border-custom rounded-xl p-3"
+            className="flex gap-1.5 items-start bg-surface-alt border border-border-custom rounded-xl p-2"
           >
             {/* Placa */}
             <div className="flex-1 min-w-0">
@@ -434,7 +434,7 @@ export default function FormNovoAgendamento({
                 onChange={(e) =>
                   atualizarVeiculo(index, "placa", e.target.value)
                 }
-                className="w-full px-3 py-3 text-base font-mono tracking-wider bg-surface border-2 border-border-custom rounded-lg
+                className="w-full px-2.5 py-2 text-sm font-mono tracking-wider bg-surface border-2 border-border-custom rounded-lg
                            focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none
                            transition-colors placeholder:text-text-disabled uppercase"
               />
@@ -449,7 +449,7 @@ export default function FormNovoAgendamento({
                 onChange={(e) =>
                   atualizarVeiculo(index, "modelo", e.target.value)
                 }
-                className="w-full px-3 py-3 text-base bg-surface border-2 border-border-custom rounded-lg
+                className="w-full px-2.5 py-2 text-sm bg-surface border-2 border-border-custom rounded-lg
                            focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none
                            transition-colors placeholder:text-text-disabled"
               />
@@ -460,12 +460,12 @@ export default function FormNovoAgendamento({
               type="button"
               onClick={() => removerVeiculo(index)}
               disabled={veiculos.length === 1}
-              className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg
+              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg
                          transition-colors disabled:opacity-20 disabled:cursor-not-allowed
                          cursor-pointer shrink-0"
               title="Remover veículo"
             >
-              <Trash2 size={20} />
+              <Trash2 size={16} />
             </button>
           </div>
         ))}
@@ -474,11 +474,11 @@ export default function FormNovoAgendamento({
         <button
           type="button"
           onClick={adicionarVeiculo}
-          className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold
+          className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-semibold
                      text-primary-600 bg-primary-50 border-2 border-dashed border-primary-200 rounded-xl
                      hover:bg-primary-100 active:bg-primary-200 transition-colors cursor-pointer"
         >
-          <PlusCircle size={18} />
+          <PlusCircle size={16} />
           Adicionar outro veículo
         </button>
       </fieldset>
@@ -501,19 +501,19 @@ export default function FormNovoAgendamento({
       <button
         type="submit"
         disabled={salvando}
-        className="flex items-center justify-center gap-3 w-full py-4 text-lg font-bold
+        className="flex items-center justify-center gap-2 w-full py-3 text-sm font-bold
                    text-white bg-primary-500 hover:bg-primary-600 active:bg-primary-700
                    rounded-xl shadow-lg transition-colors disabled:opacity-60
                    disabled:cursor-not-allowed cursor-pointer"
       >
         {salvando ? (
           <>
-            <Loader2 size={24} className="animate-spin" />
+            <Loader2 size={20} className="animate-spin" />
             Salvando…
           </>
         ) : (
           <>
-            <Save size={24} />
+            <Save size={20} />
             {modoEdicao ? "Atualizar Agendamento" : "Salvar Agendamento"}
           </>
         )}

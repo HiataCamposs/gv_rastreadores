@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   RefreshCw,
   AlertCircle,
@@ -14,6 +15,7 @@ import {
   TrendingUp,
   BarChart3,
   Wrench,
+  Map,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -26,6 +28,7 @@ const STATUS_COR = {
   em_andamento: "bg-blue-400",
   concluido: "bg-green-500",
   cancelado: "bg-red-400",
+  finalizado: "bg-emerald-500",
 };
 
 const STATUS_LABEL = {
@@ -33,6 +36,7 @@ const STATUS_LABEL = {
   em_andamento: "Em andamento",
   concluido: "Concluídos",
   cancelado: "Cancelados",
+  finalizado: "Finalizados",
 };
 
 const TIPO_LABEL = {
@@ -49,13 +53,8 @@ const TIPO_COR = {
   outros: "bg-text-disabled",
 };
 
-export default function Dashboard({
-  onNovoAgendamento,
-  onAgendamentos,
-  onEmpresas,
-  onEstoque,
-  onAcaoHeader,
-}) {
+export default function Dashboard({ onAcaoHeader }) {
+  const navigate = useNavigate();
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
   const [dados, setDados] = useState(null);
@@ -68,13 +67,31 @@ export default function Dashboard({
       const trintaDiasAtras = new Date();
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
 
-      const [resAtend, resEmpresas, resEstoque] = await Promise.all([
+      /* Amanhã */
+      const amanha = new Date();
+      amanha.setDate(amanha.getDate() + 1);
+      const inicioAmanha = new Date(
+        amanha.getFullYear(),
+        amanha.getMonth(),
+        amanha.getDate(),
+      ).toISOString();
+      const fimAmanha = new Date(
+        amanha.getFullYear(),
+        amanha.getMonth(),
+        amanha.getDate(),
+        23,
+        59,
+        59,
+        999,
+      ).toISOString();
+
+      const [resAtend, resEmpresas, resEstoque, resAmanha] = await Promise.all([
         supabase
           .from("atendimentos")
           .select(
             `id, data, cidade, tipo_servico, status, empresa_id,
              empresas ( razao_social, nome_fantasia ),
-             atendimento_veiculos ( id )`
+             atendimento_veiculos ( id )`,
           )
           .gte("data", trintaDiasAtras.toISOString())
           .is("deleted_at", null)
@@ -87,6 +104,17 @@ export default function Dashboard({
           .from("estoque")
           .select("id, quantidade, empresa_id")
           .is("deleted_at", null),
+        supabase
+          .from("atendimentos")
+          .select(
+            `id, data, cidade, endereco, responsavel,
+             empresas ( razao_social, nome_fantasia )`,
+          )
+          .gte("data", inicioAmanha)
+          .lte("data", fimAmanha)
+          .is("deleted_at", null)
+          .eq("status", "pendente")
+          .order("data", { ascending: true }),
       ]);
 
       if (resAtend.error) throw resAtend.error;
@@ -97,6 +125,7 @@ export default function Dashboard({
         atendimentos: resAtend.data ?? [],
         empresas: resEmpresas.data ?? [],
         estoque: resEstoque.data ?? [],
+        amanha: resAmanha.data ?? [],
       });
     } catch (err) {
       console.error("Erro ao buscar dados:", err);
@@ -121,7 +150,7 @@ export default function Dashboard({
         title="Atualizar"
       >
         <RefreshCw size={20} className={carregando ? "animate-spin" : ""} />
-      </button>
+      </button>,
     );
     return () => onAcaoHeader?.(null);
   }, [carregando, onAcaoHeader]);
@@ -135,7 +164,7 @@ export default function Dashboard({
     const inicioDia = new Date(
       hoje.getFullYear(),
       hoje.getMonth(),
-      hoje.getDate()
+      hoje.getDate(),
     );
     const fimDia = new Date(
       hoje.getFullYear(),
@@ -144,7 +173,7 @@ export default function Dashboard({
       23,
       59,
       59,
-      999
+      999,
     );
 
     const diaHoje = atendimentos.filter((a) => {
@@ -183,7 +212,7 @@ export default function Dashboard({
         23,
         59,
         59,
-        999
+        999,
       );
       const count = atendimentos.filter((a) => {
         const d = new Date(a.data);
@@ -204,7 +233,7 @@ export default function Dashboard({
 
     const totalVeiculos = atendimentos.reduce(
       (acc, a) => acc + (a.atendimento_veiculos?.length || 0),
-      0
+      0,
     );
 
     const porEmpresa = {};
@@ -218,7 +247,7 @@ export default function Dashboard({
 
     const totalEstoque = estoque.reduce(
       (acc, e) => acc + (e.quantidade || 0),
-      0
+      0,
     );
 
     return {
@@ -239,40 +268,51 @@ export default function Dashboard({
   /* ═══════════════ RENDER ═══════════════ */
   return (
     <div>
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-2xl mx-auto px-2.5 py-3 space-y-2.5">
         {/* ── Atalhos rápidos ── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-1.5">
           <button
-            onClick={onAgendamentos}
-            className="flex flex-col items-center gap-1.5 py-4 bg-surface border-2 border-border-custom
+            onClick={() => navigate("/agendamentos")}
+            className="flex flex-col items-center gap-0.5 py-2 bg-surface border-2 border-border-custom
                        rounded-xl hover:border-primary-400 hover:bg-primary-50 active:bg-primary-100
                        transition-colors cursor-pointer"
           >
-            <CalendarPlus size={24} className="text-primary-500" />
+            <CalendarPlus size={18} className="text-primary-500" />
             <span className="text-xs font-semibold text-text-secondary">
               Agendamentos
             </span>
           </button>
           <button
-            onClick={onEmpresas}
-            className="flex flex-col items-center gap-1.5 py-4 bg-surface border-2 border-border-custom
+            onClick={() => navigate("/empresas")}
+            className="flex flex-col items-center gap-0.5 py-2 bg-surface border-2 border-border-custom
                        rounded-xl hover:border-accent-400 hover:bg-accent-50 active:bg-accent-100
                        transition-colors cursor-pointer"
           >
-            <Building2 size={24} className="text-accent-500" />
+            <Building2 size={18} className="text-accent-500" />
             <span className="text-xs font-semibold text-text-secondary">
               Empresas
             </span>
           </button>
           <button
-            onClick={onEstoque}
-            className="flex flex-col items-center gap-1.5 py-4 bg-surface border-2 border-border-custom
+            onClick={() => navigate("/estoque")}
+            className="flex flex-col items-center gap-0.5 py-2 bg-surface border-2 border-border-custom
                        rounded-xl hover:border-primary-300 hover:bg-primary-50 active:bg-primary-100
                        transition-colors cursor-pointer"
           >
-            <Package size={24} className="text-primary-600" />
+            <Package size={18} className="text-primary-600" />
             <span className="text-xs font-semibold text-text-secondary">
               Estoque
+            </span>
+          </button>
+          <button
+            onClick={() => navigate("/estatisticas")}
+            className="flex flex-col items-center gap-0.5 py-2 bg-surface border-2 border-border-custom
+                       rounded-xl hover:border-emerald-400 hover:bg-emerald-50 active:bg-emerald-100
+                       transition-colors cursor-pointer"
+          >
+            <BarChart3 size={18} className="text-emerald-500" />
+            <span className="text-xs font-semibold text-text-secondary">
+              Dashboard
             </span>
           </button>
         </div>
@@ -305,62 +345,29 @@ export default function Dashboard({
         {!carregando && !erro && metricas && (
           <>
             {/* ── KPI Cards ── */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-1.5">
               <KpiCard
-                icone={<CalendarCheck size={22} />}
+                icone={<CalendarCheck size={20} />}
                 label="Hoje"
                 valor={metricas.diaHoje.length}
                 cor="text-primary-500"
                 bgCor="bg-primary-50"
               />
               <KpiCard
-                icone={<Clock size={22} />}
+                icone={<Clock size={20} />}
                 label="Pendentes"
                 valor={metricas.porStatus.pendente || 0}
                 cor="text-yellow-600"
                 bgCor="bg-yellow-50"
               />
-              <KpiCard
-                icone={<CheckCircle2 size={22} />}
-                label="Concluídos"
-                valor={metricas.porStatus.concluido || 0}
-                cor="text-green-600"
-                bgCor="bg-green-50"
-              />
-              <KpiCard
-                icone={<Car size={22} />}
-                label="Veículos"
-                valor={metricas.totalVeiculos}
-                cor="text-accent-500"
-                bgCor="bg-accent-50"
-              />
-            </div>
-
-            {/* ── Resumo numérico ── */}
-            <div className="grid grid-cols-3 gap-3">
-              <MiniKpi
-                label="Empresas ativas"
-                valor={metricas.totalEmpresas}
-                icone={<Building2 size={16} />}
-              />
-              <MiniKpi
-                label="Equipamentos"
-                valor={metricas.totalEstoque}
-                icone={<Package size={16} />}
-              />
-              <MiniKpi
-                label="Atendimentos (30d)"
-                valor={metricas.totalAtendimentos}
-                icone={<BarChart3 size={16} />}
-              />
             </div>
 
             {/* ── Gráfico últimos 7 dias ── */}
-            <section className="bg-surface rounded-xl border border-border-custom p-4 space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-text-secondary">
-                <TrendingUp size={16} /> Últimos 7 dias
+            <section className="bg-surface rounded-xl border border-border-custom p-3 space-y-2">
+              <h2 className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
+                <TrendingUp size={14} /> Últimos 7 dias
               </h2>
-              <div className="flex items-end gap-2 h-32">
+              <div className="flex items-end gap-1.5 h-28">
                 {metricas.ultimos7.map((d, i) => {
                   const pct = (d.count / metricas.max7) * 100;
                   const isHoje = i === 6;
@@ -399,125 +406,63 @@ export default function Dashboard({
               </div>
             </section>
 
-            {/* ── Status dos atendimentos (30d) ── */}
-            <section className="bg-surface rounded-xl border border-border-custom p-4 space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-text-secondary">
-                <CalendarCheck size={16} /> Status (últimos 30 dias)
-              </h2>
-
-              {metricas.totalAtendimentos > 0 && (
-                <div className="flex rounded-full overflow-hidden h-4">
-                  {Object.entries(metricas.porStatus).map(([status, count]) => {
-                    const pct = (count / metricas.totalAtendimentos) * 100;
-                    return (
-                      <div
-                        key={status}
-                        className={`${STATUS_COR[status] || "bg-gray-300"}`}
-                        style={{ width: `${pct}%` }}
-                        title={`${STATUS_LABEL[status]}: ${count}`}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(metricas.porStatus).map(([status, count]) => (
-                  <div key={status} className="flex items-center gap-2">
-                    <span
-                      className={`w-3 h-3 rounded-full ${
-                        STATUS_COR[status] || "bg-gray-300"
-                      }`}
-                    />
-                    <span className="text-xs text-text-secondary">
-                      {STATUS_LABEL[status] || status}
-                    </span>
-                    <span className="text-xs font-bold text-text-primary ml-auto">
-                      {count}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* ── Tipo de serviço ── */}
-            <section className="bg-surface rounded-xl border border-border-custom p-4 space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-text-secondary">
-                <Wrench size={16} /> Tipo de Serviço (30d)
-              </h2>
-              <div className="space-y-2">
-                {Object.entries(metricas.porTipo)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([tipo, count]) => {
-                    const pct = (count / metricas.totalAtendimentos) * 100;
-                    return (
-                      <div key={tipo} className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-text-secondary">
-                            {TIPO_LABEL[tipo] || tipo}
-                          </span>
-                          <span className="font-bold text-text-primary">
-                            {count} ({Math.round(pct)}%)
-                          </span>
-                        </div>
-                        <div className="h-2 bg-bg rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              TIPO_COR[tipo] || "bg-gray-400"
-                            }`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </section>
-
-            {/* ── Top Cidades ── */}
-            {metricas.topCidades.length > 0 && (
+            {/* ── Mapa: Agendamentos de amanhã ── */}
+            {dados.amanha.length > 0 && (
               <section className="bg-surface rounded-xl border border-border-custom p-4 space-y-3">
                 <h2 className="flex items-center gap-2 text-sm font-bold text-text-secondary">
-                  <MapPin size={16} /> Top Cidades (30d)
+                  <Map size={16} /> Amanhã &mdash; {dados.amanha.length}{" "}
+                  agendamento{dados.amanha.length !== 1 && "s"}
                 </h2>
+                {/* Link para rota no Google Maps */}
+                <a
+                  href={`https://www.google.com/maps/dir/Governador+Valadares,MG/${dados.amanha
+                    .map((a) =>
+                      encodeURIComponent(a.endereco || a.cidade + ", MG"),
+                    )
+                    .join("/")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 text-xs font-semibold
+                             text-white bg-accent-500 hover:bg-accent-600 active:bg-accent-700
+                             rounded-xl transition-colors cursor-pointer"
+                >
+                  <Map size={16} /> Ver rota no Google Maps
+                </a>
+                {/* Lista dos agendamentos */}
                 <div className="space-y-2">
-                  {metricas.topCidades.map(([cidade, count], i) => (
-                    <div key={cidade} className="flex items-center gap-3">
-                      <span className="w-5 h-5 flex items-center justify-center rounded-full bg-primary-100 text-primary-700 text-[10px] font-bold shrink-0">
-                        {i + 1}
-                      </span>
-                      <span className="text-sm text-text-primary flex-1 truncate">
-                        {cidade}
-                      </span>
-                      <span className="text-sm font-bold text-text-primary">
-                        {count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* ── Top Empresas ── */}
-            {metricas.topEmpresas.length > 0 && (
-              <section className="bg-surface rounded-xl border border-border-custom p-4 space-y-3">
-                <h2 className="flex items-center gap-2 text-sm font-bold text-text-secondary">
-                  <Building2 size={16} /> Top Empresas (30d)
-                </h2>
-                <div className="space-y-2">
-                  {metricas.topEmpresas.map(([empresa, count], i) => (
-                    <div key={empresa} className="flex items-center gap-3">
-                      <span className="w-5 h-5 flex items-center justify-center rounded-full bg-accent-100 text-accent-700 text-[10px] font-bold shrink-0">
-                        {i + 1}
-                      </span>
-                      <span className="text-sm text-text-primary flex-1 truncate">
-                        {empresa}
-                      </span>
-                      <span className="text-sm font-bold text-text-primary">
-                        {count}
-                      </span>
-                    </div>
-                  ))}
+                  {dados.amanha.map((a) => {
+                    const hora = new Date(a.data).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    const nome =
+                      a.empresas?.nome_fantasia ||
+                      a.empresas?.razao_social ||
+                      "—";
+                    return (
+                      <a
+                        key={a.id}
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.endereco || a.cidade)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 px-3 py-2.5 bg-bg rounded-lg
+                                   hover:bg-primary-50 transition-colors"
+                      >
+                        <MapPin
+                          size={14}
+                          className="text-primary-500 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-text-primary truncate">
+                            {a.cidade}
+                          </p>
+                          <p className="text-xs text-text-secondary truncate">
+                            {nome} • {hora}
+                          </p>
+                        </div>
+                      </a>
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -530,7 +475,7 @@ export default function Dashboard({
                     <Clock size={16} /> Agenda de Hoje
                   </h2>
                   <button
-                    onClick={onAgendamentos}
+                    onClick={() => navigate("/agendamentos")}
                     className="text-xs font-semibold text-primary-500 hover:text-primary-700
                                cursor-pointer transition-colors"
                   >
@@ -546,7 +491,7 @@ export default function Dashboard({
                         {
                           hour: "2-digit",
                           minute: "2-digit",
-                        }
+                        },
                       );
                       return (
                         <div
@@ -574,14 +519,14 @@ export default function Dashboard({
 
       {/* ══════════ FAB: NOVO AGENDAMENTO ══════════ */}
       <button
-        onClick={onNovoAgendamento}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-primary-500 hover:bg-primary-600
-                   active:bg-primary-700 text-white rounded-full shadow-xl
+        onClick={() => navigate("/novo")}
+        className="fixed bottom-5 right-5 w-11 h-11 bg-primary-500 hover:bg-primary-600
+                   active:bg-primary-700 text-white rounded-full shadow-lg
                    flex items-center justify-center transition-colors cursor-pointer
                    z-50"
         title="Novo Agendamento"
       >
-        <Plus size={32} strokeWidth={2.5} />
+        <Plus size={22} strokeWidth={2.5} />
       </button>
     </div>
   );
@@ -594,12 +539,12 @@ export default function Dashboard({
 function KpiCard({ icone, label, valor, cor, bgCor }) {
   return (
     <div
-      className={`flex items-center gap-3 p-4 rounded-xl border border-border-custom ${bgCor}`}
+      className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border border-border-custom ${bgCor}`}
     >
       <div className={`${cor}`}>{icone}</div>
       <div>
-        <p className="text-2xl font-bold text-text-primary">{valor}</p>
-        <p className="text-xs text-text-secondary font-medium">{label}</p>
+        <p className="text-lg font-bold text-text-primary">{valor}</p>
+        <p className="text-[10px] text-text-secondary font-medium">{label}</p>
       </div>
     </div>
   );
